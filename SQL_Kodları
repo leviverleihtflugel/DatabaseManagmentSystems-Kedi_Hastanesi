@@ -1,0 +1,239 @@
+-- Hasta Tablosu
+CREATE TABLE Hasta (
+    HastaID SERIAL PRIMARY KEY,
+    Isim VARCHAR(100) NOT NULL,
+    Tur VARCHAR(50),
+    Yas INT,
+    Cinsiyet VARCHAR(10),
+    SaglikDurumu TEXT,
+    SahipBilgileri TEXT
+);
+
+-- Personel Tablosu (Üst Tablo)
+CREATE TABLE Personel (
+    PersonelID SERIAL PRIMARY KEY,
+    Isim VARCHAR(100) NOT NULL,
+    Telefon VARCHAR(15),
+    Adres TEXT,
+    Pozisyon VARCHAR(50) NOT NULL
+);
+
+-- Veteriner Tablosu (Personel'den türetilmiş)
+CREATE TABLE Veteriner (
+    VeterinerID INT PRIMARY KEY,
+    UzmanlikAlani VARCHAR(100),
+    CalismaSaatleri TEXT,
+    FOREIGN KEY (VeterinerID) REFERENCES Personel(PersonelID)
+);
+
+-- DestekPersoneli Tablosu (Personel'den türetilmiş)
+CREATE TABLE DestekPersoneli (
+    DestekPersonelID INT PRIMARY KEY,
+    GorevTanimi TEXT,
+    FOREIGN KEY (DestekPersonelID) REFERENCES Personel(PersonelID)
+);
+
+-- Randevu Türü Tablosu
+CREATE TABLE RandevuTuru (
+    RandevuTurID SERIAL PRIMARY KEY,
+    TurAdi VARCHAR(50) NOT NULL
+);
+
+-- Randevu Tablosu
+CREATE TABLE Randevu (
+    RandevuID SERIAL PRIMARY KEY,
+    HastaID INT NOT NULL,
+    VeterinerID INT NOT NULL,
+    Tarih DATE NOT NULL,
+    Saat TIME NOT NULL,
+    Durum VARCHAR(50),
+    RandevuTurID INT,
+    FOREIGN KEY (HastaID) REFERENCES Hasta(HastaID),
+    FOREIGN KEY (VeterinerID) REFERENCES Veteriner(VeterinerID),
+    FOREIGN KEY (RandevuTurID) REFERENCES RandevuTuru(RandevuTurID)
+);
+
+-- Tedavi Türü Tablosu
+CREATE TABLE TedaviTuru (
+    TedaviTurID SERIAL PRIMARY KEY,
+    TedaviAdi VARCHAR(100) NOT NULL
+);
+
+-- Tedavi Tablosu
+CREATE TABLE Tedavi (
+    TedaviID SERIAL PRIMARY KEY,
+    RandevuID INT NOT NULL,
+    Aciklama TEXT,
+    Tarih DATE,
+    TedaviTurID INT,
+    FOREIGN KEY (RandevuID) REFERENCES Randevu(RandevuID),
+    FOREIGN KEY (TedaviTurID) REFERENCES TedaviTuru(TedaviTurID)
+);
+
+-- Recete Tablosu
+CREATE TABLE Recete (
+    ReceteID SERIAL PRIMARY KEY,
+    TedaviID INT NOT NULL,
+    IlacBilgisi TEXT,
+    KullanimTalimati TEXT,
+    FOREIGN KEY (TedaviID) REFERENCES Tedavi(TedaviID)
+);
+
+-- Stok Tablosu
+CREATE TABLE Stok (
+    StokID SERIAL PRIMARY KEY,
+    UrunAdi VARCHAR(100) NOT NULL,
+    Kategori VARCHAR(50),
+    Miktar INT,
+    SonKullanmaTarihi DATE
+);
+
+-- Stok-Recete Arasındaki N:M İlişkisi İçin Ara Tablo
+CREATE TABLE StokRecete (
+    StokID INT NOT NULL,
+    ReceteID INT NOT NULL,
+    PRIMARY KEY (StokID, ReceteID),
+    FOREIGN KEY (StokID) REFERENCES Stok(StokID),
+    FOREIGN KEY (ReceteID) REFERENCES Recete(ReceteID)
+);
+
+-- Klinik Tablosu
+CREATE TABLE Klinik (
+    KlinikID SERIAL PRIMARY KEY,
+    KlinikAdi VARCHAR(100) NOT NULL,
+    Adres TEXT
+);
+
+-- KlinikRandevu Tablosu (Klinikler ve Randevular Arası İlişki)
+CREATE TABLE KlinikRandevu (
+    KlinikID INT NOT NULL,
+    RandevuID INT NOT NULL,
+    PRIMARY KEY (KlinikID, RandevuID),
+    FOREIGN KEY (KlinikID) REFERENCES Klinik(KlinikID),
+    FOREIGN KEY (RandevuID) REFERENCES Randevu(RandevuID)
+);
+
+-- KlinikStok Tablosu (Kliniklerdeki Stok Durumu)
+CREATE TABLE KlinikStok (
+    KlinikID INT NOT NULL,
+    StokID INT NOT NULL,
+    Miktar INT,
+    PRIMARY KEY (KlinikID, StokID),
+    FOREIGN KEY (KlinikID) REFERENCES Klinik(KlinikID),
+    FOREIGN KEY (StokID) REFERENCES Stok(StokID)
+);
+
+-- Tedavi Kayit Tablosu (Tedavi Süreçleri İçin)
+CREATE TABLE TedaviKayit (
+    TedaviKayitID SERIAL PRIMARY KEY,
+    TedaviID INT NOT NULL,
+    Aciklama TEXT,
+    Tarih DATE,
+    FOREIGN KEY (TedaviID) REFERENCES Tedavi(TedaviID)
+);
+
+-- Saklı Yordamlar (Stored Procedures)
+
+-- Hasta Ekleme Yordamı
+CREATE OR REPLACE FUNCTION HastaEkle(
+    p_Isim VARCHAR, p_Tur VARCHAR, p_Yas INT, p_Cinsiyet VARCHAR, p_SaglikDurumu TEXT, p_SahipBilgileri TEXT
+) RETURNS VOID AS $$
+BEGIN
+    INSERT INTO Hasta(Isim, Tur, Yas, Cinsiyet, SaglikDurumu, SahipBilgileri)
+    VALUES (p_Isim, p_Tur, p_Yas, p_Cinsiyet, p_SaglikDurumu, p_SahipBilgileri);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Tedavi Ücret Hesaplama Yordamı
+CREATE OR REPLACE FUNCTION TedaviUcretHesapla(p_TedaviTurID INT) RETURNS NUMERIC AS $$
+DECLARE
+    ucret NUMERIC;
+BEGIN
+    SELECT CASE
+        WHEN p_TedaviTurID = 1 THEN 100.00
+        WHEN p_TedaviTurID = 2 THEN 200.00
+        ELSE 150.00
+    END INTO ucret;
+    RETURN ucret;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Stok Azaltma Yordamı
+CREATE OR REPLACE FUNCTION StokAzalt(p_StokID INT, p_Miktar INT) RETURNS VOID AS $$
+BEGIN
+    UPDATE Stok SET Miktar = Miktar - p_Miktar WHERE StokID = p_StokID;
+    IF (SELECT Miktar FROM Stok WHERE StokID = p_StokID) < 0 THEN
+        RAISE EXCEPTION 'Stok yetersiz';
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Klinik Stok Kontrol Yordamı
+CREATE OR REPLACE FUNCTION KlinikStokKontrol(p_KlinikID INT, p_UrunAdi VARCHAR) RETURNS INT AS $$
+DECLARE
+    miktar INT;
+BEGIN
+    SELECT ks.Miktar INTO miktar
+    FROM KlinikStok ks
+    JOIN Stok s ON ks.StokID = s.StokID
+    WHERE ks.KlinikID = p_KlinikID AND s.UrunAdi = p_UrunAdi;
+    RETURN miktar;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Tetikleyiciler (Triggers)
+
+-- Randevu Sonrası Tedavi Oluşturma
+CREATE OR REPLACE FUNCTION RandevuSonrasiTedavi() RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO Tedavi (RandevuID, Aciklama, Tarih)
+    VALUES (NEW.RandevuID, 'Otomatik Tedavi Kaydı', CURRENT_DATE);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER RandevuSonrasiTedaviTrigger
+AFTER INSERT ON Randevu
+FOR EACH ROW
+EXECUTE FUNCTION RandevuSonrasiTedavi();
+
+-- Stok Kritik Seviyesi Uyarısı
+CREATE OR REPLACE FUNCTION StokKritikSeviye() RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.Miktar < 10 THEN
+        RAISE NOTICE 'Stok kritik seviyede: %', NEW.UrunAdi;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER StokKritikSeviyeTrigger
+AFTER UPDATE ON Stok
+FOR EACH ROW
+EXECUTE FUNCTION StokKritikSeviye();
+
+-- Yeni Hasta Bildirimi
+CREATE OR REPLACE FUNCTION YeniHastaBildirimi() RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Yeni hasta kaydı eklendi: %', NEW.Isim;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER YeniHastaBildirimiTrigger
+AFTER INSERT ON Hasta
+FOR EACH ROW
+EXECUTE FUNCTION YeniHastaBildirimi();
+
+-- Tedavi Silme Kontrolü
+CREATE OR REPLACE FUNCTION TedaviSilmeKontrol() RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM Recete WHERE TedaviID = OLD.TedaviID;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER TedaviSilmeKontrolTrigger
+BEFORE DELETE ON Tedavi
+FOR EACH ROW
+EXECUTE FUNCTION TedaviSilmeKontrol();
