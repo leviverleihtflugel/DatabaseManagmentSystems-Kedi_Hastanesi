@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kedi Hastanesi</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Kedi Hastanesi Hasta Yönetimi</h1>
+
+    <!-- Hasta Ekleme Formu -->
+    <h2>Yeni Hasta Ekle</h2>
+    <form id="hastaForm">
+        <label for="isim">İsim:</label>
+        <input type="text" id="isim" name="isim" required><br><br>
+
+        <label for="tur">Tür:</label>
+        <input type="text" id="tur" name="tur"><br><br>
+
+        <label for="yas">Yaş:</label>
+        <input type="number" id="yas" name="yas" required><br><br>
+
+        <label for="cinsiyet">Cinsiyet:</label>
+        <select id="cinsiyet" name="cinsiyet">
+            <option value="Dişi">Dişi</option>
+            <option value="Erkek">Erkek</option>
+        </select><br><br>
+
+        <label for="saglikDurumu">Sağlık Durumu:</label>
+        <input type="text" id="saglikDurumu" name="saglikDurumu"><br><br>
+
+        <label for="sahipBilgileri">Sahip Bilgileri:</label>
+        <input type="text" id="sahipBilgileri" name="sahipBilgileri"><br><br>
+
+        <button type="button" onclick="addPatient()">Kaydet</button>
+    </form>
+
+    <!-- Hasta Arama Formu -->
+    <h2>Hasta Ara</h2>
+    <form id="aramaForm">
+        <label for="araIsim">İsim:</label>
+        <input type="text" id="araIsim" name="araIsim"><br><br>
+
+        <label for="araTur">Tür:</label>
+        <input type="text" id="araTur" name="araTur"><br><br>
+
+        <button type="button" onclick="searchPatients()">Ara</button>
+    </form>
+
+    <!-- Hasta Listeleme Bölümü -->
+    <h2>Kayıtlı Hastalar</h2>
+    <table border="1" id="hastaTable">
+        <thead>
+            <tr>
+                <th>İsim</th>
+                <th>Tür</th>
+                <th>Yaş</th>
+                <th>Cinsiyet</th>
+                <th>Sağlık Durumu</th>
+                <th>Sahip Bilgileri</th>
+                <th>İşlemler</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Hastalar buraya yüklenecek -->
+        </tbody>
+    </table>
+
+    <script src="script.js"></script>
+</body>
+</html>
